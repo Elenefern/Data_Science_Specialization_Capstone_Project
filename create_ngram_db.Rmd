@@ -1,0 +1,157 @@
+---
+title: "create_ngram_db"
+author: "EFM"
+date: "25/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+```
+
+## Load packages
+```{r load_packages,message=FALSE, warning=FALSE}
+library(data.table)
+library(qdap) # word_count
+library(quanteda)
+quanteda_options(threads = 6)
+library(ggplot2)
+library(tidytext)
+library(dplyr)
+library(stringr) #word()
+```
+
+
+## Load data
+```{r load_data, message=FALSE, warning=FALSE}
+if(!file.exists("./data/Coursera-SwiftKey.zip")){
+  dir.create("./data")
+  dataUrl <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+  download.file(dataUrl, destfile="./data/Coursera-SwiftKey.zip")
+  unzip(zipfile = "./data/Coursera-SwiftKey.zip", exdir = "./data")}
+
+lines_twitter <- readLines("./data/final/en_US/en_US.twitter.txt", skipNul = TRUE, encoding = "UTF-8")
+lines_blogs <- readLines("./data/final/en_US/en_US.blogs.txt", skipNul = TRUE, encoding = "UTF-8")
+lines_news <- readLines("./data/final/en_US/en_US.news.txt", skipNul = TRUE, encoding = "UTF-8")
+
+words_twitter_per_line <- word_count(lines_twitter)
+words_blogs_per_line <- word_count(lines_blogs)
+words_news_per_line <- word_count(lines_news)
+
+words_twitter <- sum(words_twitter_per_line)
+words_blogs <- sum(words_blogs_per_line, na.rm= TRUE)
+words_news <- sum(words_news_per_line, na.rm= TRUE)
+
+lines_blogs <- lines_blogs[-which(is.na(words_blogs_per_line))]
+lines_news <- lines_news[-which(is.na(words_news_per_line))]
+
+remove(words_twitter_per_line, words_blogs_per_line, words_news_per_line)
+```
+
+
+## Sample
+```{r sampling}
+set.seed(1234) # to ensure reproducibility
+
+sample_twitter <- as.character(sample(lines_twitter, size = length(lines_twitter)*1))
+sample_blogs <- as.character(sample(lines_blogs, size = length(lines_blogs)*1))
+sample_news <- as.character(sample(lines_news, size = length(lines_news)*1))
+
+sample <- c(sample_twitter, sample_blogs, sample_news)
+
+remove(lines_blogs, lines_news, lines_twitter, sample_twitter, sample_blogs, sample_news)
+```
+
+## Tokens
+```{r tokenize, message=FALSE}
+profanity_words <- unlist(read.table("./data/final/en_US/en_profanity_words.txt", stringsAsFactors = FALSE, sep = "\n")) 
+
+replace_reg <- "[^[:alpha:][:space:]]*" #remove everything which is not alphanumeric or space
+replace_url <- "http[^[:space:]]*"
+
+clean_sample <- sample %>% str_replace_all(replace_reg, "") %>% str_replace_all(replace_url, "") 
+
+# create tokens
+sample_tokens <- tokens(clean_sample, what = "word", remove_punct = TRUE, remove_symbols = TRUE, remove_numbers = TRUE,
+  remove_url = TRUE, remove_separators = TRUE, split_hyphens = FALSE, include_docvars = TRUE, padding = FALSE, 
+  verbose = FALSE)
+
+# convert tokens to lowercase and remove words
+sample_tokens <- tokens_tolower(sample_tokens) 
+sample_tokens <- tokens_remove(sample_tokens, profanity_words)
+
+remove(sample, clean_sample)
+```
+
+## N-gram creation
+```{r ngrams}
+# create 2,3,4 and 5 grams
+sample_2_grams <- tokens_ngrams(sample_tokens, n=2, concatenator = " ")
+sample_3_grams <- tokens_ngrams(sample_tokens, n=3, concatenator = " ")
+sample_4_grams <- tokens_ngrams(sample_tokens, n=4, concatenator = " ")
+sample_5_grams <- tokens_ngrams(sample_tokens, n=5, concatenator = " ")
+```
+
+## dfm creation
+```{r dfm}
+# create document-feature matrices for 1,2 and 3-grams
+dfm_1_gram<-dfm(sample_tokens, stem = FALSE, verbose = TRUE)
+dfm_2_gram<-dfm(sample_2_grams, stem = FALSE, verbose = TRUE)
+dfm_3_gram<-dfm(sample_3_grams, stem = FALSE, verbose = TRUE)
+dfm_4_gram<-dfm(sample_4_grams, stem = FALSE, verbose = TRUE)
+dfm_5_gram<-dfm(sample_5_grams, stem = FALSE, verbose = TRUE)
+
+remove(sample_tokens,sample_2_grams,sample_3_grams, sample_4_grams, sample_5_grams)
+```
+
+## N-gram reduction
+```{r reduce}
+freq_1_gram <- data.table(textstat_frequency(dfm_1_gram)[,1:2]) %>% arrange(desc(frequency)) %>% filter(frequency>5) %>% mutate(proportion = frequency/sum(frequency)) %>% rename(prediction = feature)
+saveRDS(freq_1_gram, file = "./data/freq_1_gram.rds")
+remove(dfm_1_gram, freq_1_gram)
+
+freq_2_gram <- data.table(textstat_frequency(dfm_2_gram)[,1:2]) %>% arrange(desc(frequency)) %>% filter(frequency>5) %>% mutate(proportion = frequency/sum(frequency)) %>% mutate(prior = word(feature,1)) %>% mutate(prediction = word(feature,-1)) %>% relocate(prior, prediction) %>% select(-feature)
+saveRDS(freq_2_gram, file = "./data/freq_2_gram.rds")
+remove(dfm_2_gram, freq_2_gram)
+
+freq_3_gram <- data.table(textstat_frequency(dfm_3_gram)[,1:2]) %>% arrange(desc(frequency)) %>% filter(frequency>10) %>% mutate(proportion = frequency/sum(frequency)) %>% mutate(prior = word(feature,1,2)) %>% mutate(prediction = word(feature,-1)) %>% relocate(prior, prediction) %>% select(-feature)
+saveRDS(freq_3_gram, file = "./data/freq_3_gram.rds")
+remove(dfm_3_gram, freq_3_gram)
+
+freq_4_gram <- data.table(textstat_frequency(dfm_4_gram)[,1:2]) %>% arrange(desc(frequency)) %>% filter(frequency>5) %>% mutate(proportion = frequency/sum(frequency)) %>% mutate(prior = word(feature,1,3)) %>% mutate(prediction = word(feature,-1)) %>% relocate(prior, prediction) %>% select(-feature)
+saveRDS(freq_4_gram, file = "./data/freq_4_gram.rds")
+remove(dfm_4_gram, freq_4_gram)
+
+freq_5_gram <- data.table(textstat_frequency(dfm_5_gram)[,1:2]) %>% arrange(desc(frequency)) %>% filter(frequency>5) %>% mutate(proportion = frequency/sum(frequency)) %>% mutate(prior = word(feature,1,4)) %>% mutate(prediction = word(feature,-1)) %>% relocate(prior, prediction) %>% select(-feature)
+saveRDS(freq_5_gram, file = "./data/freq_5_gram.rds")
+remove(dfm_5_gram, freq_5_gram)
+```
+
+```{r load}
+freq_1_gram <- readRDS(file = "./data/freq_1_gram.rds")
+freq_2_gram <- readRDS(file = "./data/freq_2_gram.rds")
+freq_3_gram <- readRDS(file = "./data/freq_3_gram.rds")
+freq_4_gram <- readRDS(file = "./data/freq_4_gram.rds")
+freq_5_gram <- readRDS(file = "./data/freq_5_gram.rds")
+
+```
+
+```{r create db}
+library(RSQLite)
+
+con <- dbConnect(SQLite(), dbname="./data/nGramdb.db")
+
+dbListTables(con)
+
+dbWriteTable(con, "unigram", freq_1_gram, overwrite = TRUE)
+dbWriteTable(con, "bigram", freq_2_gram, overwrite = TRUE)
+dbWriteTable(con, "trigram", freq_3_gram, overwrite = TRUE)
+dbWriteTable(con, "quadgram", freq_4_gram, overwrite = TRUE)
+dbWriteTable(con, "quingram", freq_5_gram, overwrite = TRUE)
+
+dbDisconnect(con)
+
+remove(freq_1_gram, freq_2_gram, freq_3_gram, freq_4_gram, freq_5_gram)
+```
+

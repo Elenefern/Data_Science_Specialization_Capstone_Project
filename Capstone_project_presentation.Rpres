@@ -1,0 +1,65 @@
+Data Science Specialization: Capstone Project
+========================================================
+<h2>Text Prediction Shiny App</h2>
+
+Elene Fernandez <br>
+25 September 2020
+
+
+
+Background
+========================================================
+
+<small> This app has been produced in order to complete the Capstone Project for the Data Science Specialization provided by Johns Hopkins University (JHU) in Coursera. </small>
+
+<small> The Capstone Project allows students to create a usable/public data product that can be used to show the acquired skills to potential employers. For this project, JHU has partnered with SwiftKey to create a text predictor by applying *Natural Language Processing* techniques. </small>
+
+
+<small> [App link](https://elenefernandez.shinyapps.io/text_predictor/?_ga=2.22707192.237164615.1601059779-1771749254.1599119694) </small>
+
+<small> [Github link](https://github.com/Elenefern/Data_Science_Specialization_Capstone_Project) </small>
+
+
+The Data
+========================================================
+
+<small> The data used to create the text prediction model can be downloaded from [here](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip), which comes from the corpus [HC Corpora](http://corpora.epizy.com/). Note that the text prediction model has only been developed from the English corpora. Therefore, any non-English entries will not produce coorect predictions. </small>
+
+<small> The main data cleaning processes that have been performed are: </small>
+* <small> punctuation mark and separator removal </small>
+* <small>number and symbol removal </small>
+* <small>conversion to lower case </small>
+* <small>profanity filtering </small>
+
+<small> Note that stemming and stopword removal have not been performed since this would result in a predictor that would not feel natural. </small>
+
+
+The Algorithm
+========================================================
+
+<small> The prediction algorithm used is based on the [Katz back-off](https://en.wikipedia.org/wiki/Katz%27s_back-off_model#:~:text=Katz%20back%2Doff%20is%20a,history%20models%20under%20certain%20conditions]) n-gram language model. </small>
+
+<small> Based on the [recommendations done by Len Greski](https://github.com/lgreski/datasciencectacontent/blob/master/markdown/capstone-choosingATextPackage.md) , former mentor of this capstone, the simplest version of the KBO algorithm has been used, **Stupid-Back-off**. Indeed, due to the fact that the prediction model has to run on the Shiny servers and the need for a fast app, simplicity becomes key. However, the accuracy of the model has not been massively affected in comparison with other more complex implementations such as the Kneser-Ney discounting Back-Off model. </small>
+
+```{r, out.width="30%", echo=FALSE}
+   knitr::include_graphics('./figures/stupid_back_off.png')
+```
+
+<small> [ref]: https://www.aclweb.org/anthology/D07-1090.pdf </small>
+
+
+The n-gram Database
+========================================================
+
+<small> A SQL database has been used for storing all the cleaned n-grams, containing from unigrams to quingrams. In order to reduce the size of the database, some filtering was performed to remove the most unlikely n-grams. </small>
+
+
+
+How To Use
+========================================================
+
+<small> Pressing on the *Start* button of the *Home* tab will direct you to the *Text Predictor* tab. Once in this tab, all you need to do is select the amount of predictions you want to visualize and enter your text. Press *Submit* to get the results. </small>
+
+```{r, out.width="40%", echo=FALSE}
+   knitr::include_graphics('./figures/how_to_use.png')
+```

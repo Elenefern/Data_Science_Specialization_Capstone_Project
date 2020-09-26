@@ -1,0 +1,12 @@
+name: text_predictor
+title: text_predictor
+username:
+account: elenefernandez
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2889712
+bundleId: 3673538
+url: https://elenefernandez.shinyapps.io/text_predictor/
+when: 1601129666.1732
+asMultiple: FALSE
+asStatic: FALSE
