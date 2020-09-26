@@ -34,7 +34,8 @@ A SQL database has been used for storing all the cleaned n-grams, containing fro
 
 * `create_ngram_db.Rmd`: performs all the data cleaning, creates 1-gram to 5-grams and stores them in the SQL database used by the app.  
 * `Capstone_project_presentation.Rpres`: R presentation
+* **figures/:** figures used for the R presentation
 * **app/:**
     * `ui.R`/`server.R`: shiny app files
-    * `data/nGramdb.db`: SQL database
+    * `www/nGramdb.db`: SQL database
     * **www**: images used within the app
